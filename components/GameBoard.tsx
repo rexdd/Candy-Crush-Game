@@ -9,37 +9,43 @@ interface GameBoardProps {
   selectedIndices: number[];
 }
 
+const COLORS = [
+  'text-blue-500', 'text-pink-500', 'text-orange-500', 
+  'text-emerald-500', 'text-purple-500', 'text-indigo-500',
+  'text-rose-500', 'text-amber-500', 'text-teal-500'
+];
+
 const GameBoard: React.FC<GameBoardProps> = ({ cards, onCardClick, accentColor, selectedIndices }) => {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 p-2 w-full max-w-5xl mx-auto">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 p-4 w-full max-w-6xl mx-auto">
       {cards.map((card, index) => {
         const isSelected = selectedIndices.includes(index);
+        const colorClass = COLORS[index % COLORS.length];
         
         return (
           <div
             key={card.id}
             onClick={() => !card.isMatched && onCardClick(index)}
             className={`
-              relative h-24 sm:h-28 md:h-32 cursor-pointer transition-all duration-200
-              ${card.isMatched ? 'opacity-0 scale-90 pointer-events-none' : 'hover:translate-y-[-2px]'}
+              relative h-32 sm:h-36 md:h-40 cursor-pointer transition-all duration-300
+              ${card.isMatched ? 'matched-hidden' : 'hover:translate-y-[-4px] active:scale-95'}
             `}
           >
             <div className={`
-              w-full h-full rounded-[1.5rem] bg-white border-2 flex items-center justify-center p-3 text-center
-              transition-all duration-200
+              w-full h-full rounded-[2rem] bg-white border-4 flex items-center justify-center p-4 text-center
+              transition-all duration-300 shadow-[0_8px_0_#E5E7EB] hover:shadow-[0_4px_0_#E5E7EB] hover:translate-y-[4px]
               ${isSelected 
-                ? 'border-blue-400 ring-4 ring-blue-100 shadow-md scale-105' 
-                : 'border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.05)]'}
+                ? 'border-blue-400 bg-blue-50 ring-8 ring-blue-100/50 scale-105 shadow-none translate-y-[4px]' 
+                : 'border-white'}
             `}>
-              <span className={`text-sm sm:text-base md:text-lg font-black break-words ${card.type === 'right' ? 'text-2xl' : 'text-gray-700'} leading-tight`}>
+              <span className={`
+                ${card.type === 'left' ? 'text-2xl sm:text-3xl md:text-4xl' : 'text-3xl sm:text-4xl md:text-5xl'} 
+                font-black break-words leading-tight art-text tracking-tight
+                ${isSelected ? 'text-blue-600' : colorClass}
+              `}>
                 {card.content}
               </span>
             </div>
-            
-            {/* Soft shadow base */}
-            {!card.isMatched && !isSelected && (
-              <div className="absolute inset-0 rounded-[1.5rem] border-b-4 border-gray-100 pointer-events-none -z-10 translate-y-1 opacity-50"></div>
-            )}
           </div>
         );
       })}

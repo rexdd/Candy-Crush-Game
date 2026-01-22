@@ -9,15 +9,17 @@ export const generateLevelContent = async (mode: GameMode, level: number): Promi
   
   if (mode === GameMode.ENGLISH_CHINESE) {
     prompt = `Generate 12 interesting pairs for kids learning English level ${level}. 
-    Each pair should have 'left' (English word) and 'right' (A single Emoji that represents that word perfectly).
-    Example: {left: "apple", right: "🍎"}.
-    Focus on fruits, animals, and common objects.
+    Each pair should have 'left' (the English word) and 'right' (the Chinese translation word). 
+    Do NOT use emojis. Example: {left: "Elephant", right: "大象"}.
+    Focus on common vocabulary appropriate for elementary level.
     Format the response as a JSON array of objects with 'left' and 'right'.`;
   } else if (mode === GameMode.PINYIN) {
     prompt = `Generate 12 common Chinese words and their Pinyin for level ${level}.
     Format as JSON: 'left' (Chinese characters) and 'right' (Pinyin).`;
   } else {
     prompt = `Generate 12 math addition or subtraction problems for kids level ${level}.
+    CRITICAL REQUIREMENT: Every problem MUST result in a UNIQUE answer. 
+    Ensure the 'right' side values (answers) are all different from each other within this set of 12.
     Format as JSON: 'left' (Equation like "5 + 3") and 'right' (Result like "8").`;
   }
 

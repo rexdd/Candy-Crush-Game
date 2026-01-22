@@ -24,7 +24,7 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const initLevel = useCallback(async (mode: GameMode, level: number) => {
-    setGameState(prev => ({ ...prev, isBusy: true, encouragement: '正在拼命加载中...' }));
+    setGameState(prev => ({ ...prev, isBusy: true, encouragement: '正在为你准备新的题目...' }));
     try {
       const data = await generateLevelContent(mode, level);
       const cards: Card[] = [];
@@ -34,7 +34,7 @@ const App: React.FC = () => {
           id: `${pair.id}-left`,
           content: pair.left,
           matchId: pair.id,
-          isFlipped: true, // In Elimination mode, cards are visible
+          isFlipped: true,
           isMatched: false,
           type: 'left'
         });
@@ -42,13 +42,12 @@ const App: React.FC = () => {
           id: `${pair.id}-right`,
           content: pair.right,
           matchId: pair.id,
-          isFlipped: true, // In Elimination mode, cards are visible
+          isFlipped: true,
           isMatched: false,
           type: 'right'
         });
       });
 
-      // Shuffle for random layout
       const shuffled = [...cards].sort(() => Math.random() - 0.5);
       
       setGameState(prev => ({
@@ -57,21 +56,20 @@ const App: React.FC = () => {
         isBusy: false,
         totalPairs: data.pairs.length,
         matchedCount: 0,
-        encouragement: `关卡 ${level}：请找到对应的单词和图标！`,
+        encouragement: `第 ${level} 关：开始消除吧！`,
         selectedIndices: [],
         isGameOver: false
       }));
     } catch (err) {
-      setGameState(prev => ({ ...prev, isBusy: false, encouragement: '加载失败，请重试' }));
+      setGameState(prev => ({ ...prev, isBusy: false, encouragement: '网络开小差了，再试一次吧' }));
     }
   }, []);
 
   const handleCardClick = (index: number) => {
     if (gameState.isBusy) return;
 
-    const { selectedIndices, cards } = gameState;
+    const { selectedIndices } = gameState;
 
-    // If already selected, deselect
     if (selectedIndices.includes(index)) {
       setGameState(prev => ({
         ...prev,
@@ -81,8 +79,6 @@ const App: React.FC = () => {
     }
 
     const newIndices = [...selectedIndices, index];
-    
-    // Only allow 2 selections
     if (newIndices.length > 2) return;
 
     setGameState(prev => ({ ...prev, selectedIndices: newIndices }));
@@ -98,8 +94,6 @@ const App: React.FC = () => {
     const card2 = gameState.cards[idx2];
 
     const isMatch = card1.matchId === card2.matchId;
-    
-    // Play sound logic would go here
     
     if (isMatch) {
       const msg = await getEncouragement(true);
@@ -124,9 +118,8 @@ const App: React.FC = () => {
             isGameOver: allMatched
           };
         });
-      }, 500); // Faster feedback for elimination style
+      }, 600);
     } else {
-      // Just deselect if not a match
       setGameState(prev => ({ ...prev, isBusy: true }));
       setTimeout(() => {
         setGameState(prev => ({
@@ -165,22 +158,22 @@ const App: React.FC = () => {
   if (!isPlaying) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#f9fafb]">
-        <Mascot message="Hi! 准备好开始消消乐挑战了吗？" />
-        <h1 className="text-5xl font-black text-blue-500 mb-2 tracking-tighter drop-shadow-sm">
+        <Mascot message="你好呀！想玩哪种模式？" />
+        <h1 className="text-6xl font-black text-blue-500 mb-4 tracking-tighter drop-shadow-sm">
           单词消消乐
         </h1>
-        <p className="text-gray-400 font-bold mb-10">配对并消除，快乐记单词</p>
+        <p className="text-gray-400 font-bold text-xl mb-12">大字体，更好看，更聪明</p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
           {Object.entries(THEMES).map(([mode, theme]) => (
             <button
               key={mode}
               onClick={() => startNewGame(mode as GameMode)}
-              className="bg-white rounded-[2.5rem] p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_15px_40px_rgba(0,0,0,0.08)] hover:-translate-y-2 transition-all border border-gray-100 group"
+              className="bg-white rounded-[3rem] p-10 shadow-[0_20px_0_#F3F4F6] hover:shadow-[0_10px_0_#F3F4F6] hover:translate-y-2 transition-all border-4 border-white group"
             >
-              <div className="text-7xl mb-6 group-hover:scale-110 transition-transform">{theme.icon}</div>
-              <h2 className={`text-2xl font-black mb-2 ${theme.accent}`}>{theme.name}</h2>
-              <p className="text-gray-400 font-bold">{theme.description}</p>
+              <div className="text-8xl mb-8 group-hover:scale-110 transition-transform">{theme.icon}</div>
+              <h2 className={`text-3xl font-black mb-3 ${theme.accent}`}>{theme.name}</h2>
+              <p className="text-gray-400 font-bold text-lg">{theme.description}</p>
             </button>
           ))}
         </div>
@@ -191,42 +184,42 @@ const App: React.FC = () => {
   const currentTheme = THEMES[gameState.mode];
 
   return (
-    <div className={`min-h-screen bg-[#F7F8FA] flex flex-col items-center`}>
-      {/* Top Status Pills */}
-      <header className="w-full max-w-2xl px-4 py-6 flex justify-between items-center gap-3">
-        <div className="bg-white px-6 py-2 rounded-full shadow-sm flex items-center gap-2 border border-gray-50">
-          <span className="text-gray-400 text-sm font-bold">轮次:</span>
-          <span className="text-gray-700 font-black">{gameState.level}/{gameState.totalLevels}</span>
+    <div className={`min-h-screen bg-[#F7F8FA] flex flex-col items-center pb-24`}>
+      {/* Header with pill indicators */}
+      <header className="w-full max-w-4xl px-4 py-8 flex justify-center items-center gap-4 flex-wrap">
+        <div className="bg-white px-8 py-3 rounded-full shadow-sm border border-gray-100 flex items-center gap-2">
+          <span className="text-gray-400 font-bold text-sm">轮次:</span>
+          <span className="text-gray-700 font-black text-xl">{gameState.level}/{gameState.totalLevels}</span>
         </div>
-        <div className="bg-white px-6 py-2 rounded-full shadow-sm flex items-center gap-2 border border-gray-50">
-          <span className="text-gray-400 text-sm font-bold">分数:</span>
-          <span className="text-gray-700 font-black">{gameState.score}</span>
+        <div className="bg-white px-8 py-3 rounded-full shadow-sm border border-gray-100 flex items-center gap-2">
+          <span className="text-gray-400 font-bold text-sm">分数:</span>
+          <span className="text-gray-700 font-black text-xl">{gameState.score}</span>
         </div>
-        <div className="bg-white px-6 py-2 rounded-full shadow-sm flex items-center gap-2 border border-gray-50">
-          <span className="text-gray-400 text-sm font-bold">已消除:</span>
-          <span className="text-emerald-500 font-black">{gameState.matchedCount}/{gameState.totalPairs}</span>
+        <div className="bg-white px-8 py-3 rounded-full shadow-sm border border-gray-100 flex items-center gap-2">
+          <span className="text-gray-400 font-bold text-sm">已消除:</span>
+          <span className="text-blue-500 font-black text-xl">{gameState.matchedCount}/{gameState.totalPairs}</span>
         </div>
       </header>
 
       {/* Instruction Banner */}
-      <div className="w-full max-w-4xl px-4 mb-4 animate-pop">
-        <div className="bg-white/80 backdrop-blur rounded-2xl p-3 flex items-center gap-3 shadow-sm border border-white">
-          <div className="bg-yellow-100 p-2 rounded-full text-lg">💡</div>
-          <p className="text-gray-500 text-sm font-bold tracking-wide">
-            点击相同的配对项目来消除它们。清空屏幕即可过关！
+      <div className="w-full max-w-5xl px-4 mb-6">
+        <div className="bg-white/90 backdrop-blur rounded-[2rem] p-4 flex items-center gap-4 shadow-sm border border-white">
+          <div className="bg-yellow-100 p-3 rounded-full text-2xl">✨</div>
+          <p className="text-gray-500 font-bold tracking-tight">
+            点击配对的选项进行消除。大字体更清晰，加油通关！
           </p>
         </div>
       </div>
 
-      <main className="flex-1 w-full max-w-5xl px-4 flex flex-col items-center">
+      <main className="flex-1 w-full max-w-7xl px-4">
         {gameState.isBusy && gameState.cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="w-12 h-12 border-4 border-gray-100 border-t-blue-500 rounded-full animate-spin"></div>
-            <p className="mt-4 font-bold text-gray-400">正在生成题目...</p>
+            <div className="w-16 h-16 border-8 border-gray-100 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="mt-6 text-gray-400 font-black text-2xl">正在生成关卡...</p>
           </div>
         ) : (
-          <div className="w-full py-4">
-            <div className="text-center mb-6">
+          <>
+            <div className="mb-8">
                <Mascot message={gameState.encouragement} />
             </div>
             <GameBoard 
@@ -235,26 +228,25 @@ const App: React.FC = () => {
               accentColor={currentTheme.accent}
               selectedIndices={gameState.selectedIndices}
             />
-          </div>
+          </>
         )}
       </main>
 
-      {/* Bottom Controls */}
-      <footer className="w-full max-w-2xl px-4 py-8 flex justify-center gap-4">
+      {/* Footer Controls */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/40 backdrop-blur-md p-6 flex justify-center gap-4 border-t border-white/50">
         <button 
           onClick={() => setIsPlaying(false)}
-          className="bg-[#FF7A8A] text-white px-8 py-3 rounded-full font-black shadow-md hover:brightness-105 active:scale-95 transition-all text-sm"
-        >
-          返回主页
-        </button>
-        <button 
-          onClick={() => initLevel(gameState.mode, gameState.level)}
-          className="bg-[#FFB84D] text-white px-8 py-3 rounded-full font-black shadow-md hover:brightness-105 active:scale-95 transition-all text-sm"
+          className="bg-[#FF7A8A] text-white px-10 py-4 rounded-full font-black shadow-[0_6px_0_#e66e7c] hover:translate-y-1 hover:shadow-[0_2px_0_#e66e7c] active:translate-y-1.5 active:shadow-none transition-all text-lg"
         >
           重新开始
         </button>
         <button 
-          className="bg-[#5C7CFF] text-white px-8 py-3 rounded-full font-black shadow-md hover:brightness-105 active:scale-95 transition-all text-sm"
+          className="bg-[#FFB84D] text-white px-10 py-4 rounded-full font-black shadow-[0_6px_0_#e6a645] hover:translate-y-1 hover:shadow-[0_2px_0_#e6a645] active:translate-y-1.5 active:shadow-none transition-all text-lg"
+        >
+          提示 (5分)
+        </button>
+        <button 
+          className="bg-[#5C7CFF] text-white px-10 py-4 rounded-full font-black shadow-[0_6px_0_#526fe6] hover:translate-y-1 hover:shadow-[0_2px_0_#526fe6] active:translate-y-1.5 active:shadow-none transition-all text-lg"
         >
           音效: 开
         </button>
@@ -262,15 +254,15 @@ const App: React.FC = () => {
 
       {gameState.isGameOver && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 animate-pop">
-          <div className="bg-white rounded-[3rem] p-12 text-center shadow-2xl max-w-sm w-full border-[12px] border-yellow-100">
-            <div className="text-8xl mb-6">🎉</div>
-            <h2 className="text-4xl font-black text-gray-800 mb-2">好厉害!</h2>
-            <p className="text-lg text-gray-400 font-bold mb-8">你成功消除了所有单词！</p>
+          <div className="bg-white rounded-[4rem] p-12 text-center shadow-2xl max-w-md w-full border-[16px] border-yellow-100">
+            <div className="text-9xl mb-8 animate-bounce">🏆</div>
+            <h2 className="text-5xl font-black text-gray-800 mb-4">挑战成功!</h2>
+            <p className="text-2xl text-gray-400 font-bold mb-10">你的词汇量又增加了！</p>
             <button 
-              onClick={nextLevel}
-              className="w-full bg-blue-500 text-white font-black text-xl py-4 rounded-[2rem] shadow-lg hover:bg-blue-600 active:scale-95 transition-all"
+              onClick={gameState.level < gameState.totalLevels ? nextLevel : () => setIsPlaying(false)}
+              className="w-full bg-blue-500 text-white font-black text-2xl py-6 rounded-[2.5rem] shadow-xl hover:bg-blue-600 active:scale-95 transition-all"
             >
-              {gameState.level < gameState.totalLevels ? '挑战下一关' : '太棒了，完成！'}
+              {gameState.level < gameState.totalLevels ? '下一关' : '太棒了，完成！'}
             </button>
           </div>
         </div>
