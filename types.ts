@@ -5,6 +5,12 @@ export enum GameMode {
   MATH = 'MATH'
 }
 
+export enum Difficulty {
+  EASY = 'EASY',
+  MEDIUM = 'MEDIUM',
+  HARD = 'HARD'
+}
+
 export interface Card {
   id: string;
   content: string;
@@ -24,6 +30,7 @@ export interface LevelData {
 
 export interface GameState {
   mode: GameMode;
+  difficulty: Difficulty;
   level: number;
   totalLevels: number;
   score: number;

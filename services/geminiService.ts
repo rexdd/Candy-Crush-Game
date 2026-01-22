@@ -1,26 +1,31 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { GameMode, LevelData } from "../types";
+import { GameMode, LevelData, Difficulty } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const generateLevelContent = async (mode: GameMode, level: number): Promise<LevelData> => {
+const DIFFICULTY_CONFIG = {
+  [Difficulty.EASY]: { count: 6, desc: "简单常用的" },
+  [Difficulty.MEDIUM]: { count: 12, desc: "标准水平的" },
+  [Difficulty.HARD]: { count: 18, desc: "具有挑战性的、更长或更复杂的" }
+};
+
+export const generateLevelContent = async (mode: GameMode, level: number, difficulty: Difficulty = Difficulty.MEDIUM): Promise<LevelData> => {
+  const config = DIFFICULTY_CONFIG[difficulty];
   let prompt = "";
   
   if (mode === GameMode.ENGLISH_CHINESE) {
-    prompt = `Generate 12 interesting pairs for kids learning English level ${level}. 
-    Each pair should have 'left' (the English word) and 'right' (the Chinese translation word). 
-    Do NOT use emojis. Example: {left: "Elephant", right: "大象"}.
-    Focus on common vocabulary appropriate for elementary level.
-    Format the response as a JSON array of objects with 'left' and 'right'.`;
+    prompt = `生成 ${config.count} 组适合小孩学习的${config.desc}中英单词。
+    要求：'left' 为英文，'right' 为中文。等级：${level}。
+    不使用 Emoji。例如：{left: "Elephant", right: "大象"}。
+    以 JSON 格式返回。`;
   } else if (mode === GameMode.PINYIN) {
-    prompt = `Generate 12 common Chinese words and their Pinyin for level ${level}.
-    Format as JSON: 'left' (Chinese characters) and 'right' (Pinyin).`;
+    prompt = `生成 ${config.count} 组${config.desc}汉字和拼音。等级：${level}。
+    'left' 为汉字，'right' 为拼音。以 JSON 格式返回。`;
   } else {
-    prompt = `Generate 12 math addition or subtraction problems for kids level ${level}.
-    CRITICAL REQUIREMENT: Every problem MUST result in a UNIQUE answer. 
-    Ensure the 'right' side values (answers) are all different from each other within this set of 12.
-    Format as JSON: 'left' (Equation like "5 + 3") and 'right' (Result like "8").`;
+    prompt = `生成 ${config.count} 组${config.desc}数学加减法。等级：${level}。
+    核心要求：每个算式的答案必须是唯一的，不要出现重复答案！
+    'left' 为算式（如 "12 + 5"），'right' 为结果。以 JSON 格式返回。`;
   }
 
   const response = await ai.models.generateContent({
@@ -58,16 +63,16 @@ export const generateLevelContent = async (mode: GameMode, level: number): Promi
 
 export const getEncouragement = async (isMatch: boolean): Promise<string> => {
   const prompt = isMatch 
-    ? "Give a very short, cute, and encouraging phrase in Chinese for a kid who just matched a word."
-    : "Give a very short, supportive phrase in Chinese for a kid who made a mistake.";
+    ? "给一个非常短、可爱且鼓励小孩的话，4-6个字。"
+    : "给一个非常短、安慰小孩的话，4-6个字。";
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text.trim().substring(0, 15);
+    return response.text.trim().substring(0, 10);
   } catch {
-    return isMatch ? "你真棒！" : "加油哦！";
+    return isMatch ? "你太厉害啦！" : "再接再厉哦！";
   }
 };

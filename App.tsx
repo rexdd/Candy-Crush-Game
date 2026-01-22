@@ -1,6 +1,6 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { GameMode, Card, GameState } from './types';
+import React, { useState, useCallback } from 'react';
+import { GameMode, Card, GameState, Difficulty } from './types';
 import { THEMES } from './constants';
 import { generateLevelContent, getEncouragement } from './services/geminiService';
 import Mascot from './components/Mascot';
@@ -9,6 +9,7 @@ import GameBoard from './components/GameBoard';
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
     mode: GameMode.ENGLISH_CHINESE,
+    difficulty: Difficulty.MEDIUM,
     level: 1,
     totalLevels: 5,
     score: 0,
@@ -24,11 +25,11 @@ const App: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hintIndices, setHintIndices] = useState<number[]>([]);
 
-  const initLevel = useCallback(async (mode: GameMode, level: number) => {
-    setGameState(prev => ({ ...prev, isBusy: true, encouragement: '正在召唤单词伙伴...' }));
+  const initLevel = useCallback(async (mode: GameMode, level: number, difficulty: Difficulty) => {
+    setGameState(prev => ({ ...prev, isBusy: true, encouragement: '正在布置关卡...' }));
     setHintIndices([]);
     try {
-      const data = await generateLevelContent(mode, level);
+      const data = await generateLevelContent(mode, level, difficulty);
       const cards: Card[] = [];
       
       data.pairs.forEach((pair) => {
@@ -58,18 +59,18 @@ const App: React.FC = () => {
         isBusy: false,
         totalPairs: data.pairs.length,
         matchedCount: 0,
-        encouragement: `关卡 ${level}：找到所有配对吧！`,
+        encouragement: `准备好了吗？开始！`,
         selectedIndices: [],
         isGameOver: false
       }));
     } catch (err) {
-      setGameState(prev => ({ ...prev, isBusy: false, encouragement: '哎呀，魔法断开了，再试一次？' }));
+      setGameState(prev => ({ ...prev, isBusy: false, encouragement: '魔法有点累了，点刷新试试' }));
     }
   }, []);
 
   const handleCardClick = (index: number) => {
     if (gameState.isBusy) return;
-    setHintIndices([]); // 点击时取消提示
+    setHintIndices([]); 
 
     const { selectedIndices } = gameState;
 
@@ -99,110 +100,82 @@ const App: React.FC = () => {
     const isMatch = card1.matchId === card2.matchId;
     
     if (isMatch) {
-      const msg = await getEncouragement(true);
-      setGameState(prev => ({ ...prev, isBusy: true, encouragement: msg }));
+      // 快速反馈
+      setGameState(prev => {
+        const updatedCards = [...prev.cards];
+        updatedCards[idx1].isMatched = true;
+        updatedCards[idx2].isMatched = true;
+        
+        const newMatchedCount = prev.matchedCount + 1;
+        const allMatched = newMatchedCount === prev.totalPairs;
+        
+        return {
+          ...prev,
+          cards: updatedCards,
+          selectedIndices: [],
+          score: prev.score + 10,
+          matchedCount: newMatchedCount,
+          isGameOver: allMatched,
+          isBusy: false
+        };
+      });
       
-      setTimeout(() => {
-        setGameState(prev => {
-          const updatedCards = [...prev.cards];
-          updatedCards[idx1].isMatched = true;
-          updatedCards[idx2].isMatched = true;
-          
-          const newMatchedCount = prev.matchedCount + 1;
-          const allMatched = newMatchedCount === prev.totalPairs;
-          
-          return {
-            ...prev,
-            cards: updatedCards,
-            selectedIndices: [],
-            isBusy: false,
-            score: prev.score + 10,
-            matchedCount: newMatchedCount,
-            isGameOver: allMatched
-          };
-        });
-      }, 600);
+      // 异步更新鼓励语，不阻塞操作
+      getEncouragement(true).then(msg => {
+        setGameState(prev => ({ ...prev, encouragement: msg }));
+      });
     } else {
       setGameState(prev => ({ ...prev, isBusy: true }));
+      // 缩短错误显示时间至300ms
       setTimeout(() => {
         setGameState(prev => ({
           ...prev,
           selectedIndices: [],
           isBusy: false
         }));
-      }, 500);
+      }, 300);
     }
-  };
-
-  const handleHint = () => {
-    if (gameState.isBusy || gameState.score < 5) {
-        if (gameState.score < 5) {
-            setGameState(prev => ({ ...prev, encouragement: "分数不够哦，多消几个再试！" }));
-        }
-        return;
-    }
-
-    // 寻找一组未消除的匹配项
-    const unMatchedCards = gameState.cards.filter(c => !c.isMatched);
-    if (unMatchedCards.length === 0) return;
-
-    const firstMatchId = unMatchedCards[0].matchId;
-    const indicesToHint: number[] = [];
-    gameState.cards.forEach((c, idx) => {
-      if (c.matchId === firstMatchId) indicesToHint.push(idx);
-    });
-
-    setHintIndices(indicesToHint);
-    setGameState(prev => ({ ...prev, score: Math.max(0, prev.score - 5) }));
-    
-    // 3秒后自动取消提示
-    setTimeout(() => setHintIndices([]), 3000);
-  };
-
-  const nextLevel = () => {
-    const nextLvl = gameState.level + 1;
-    if (nextLvl > gameState.totalLevels) {
-      setIsPlaying(false);
-      return;
-    }
-    setGameState(prev => ({ ...prev, level: nextLvl }));
-    initLevel(gameState.mode, nextLvl);
   };
 
   const startNewGame = (mode: GameMode) => {
-    setGameState(prev => ({ 
-      ...prev, 
-      mode, 
-      level: 1, 
-      score: 0, 
-      matchedCount: 0, 
-      cards: [], 
-      isGameOver: false 
-    }));
     setIsPlaying(true);
-    initLevel(mode, 1);
+    initLevel(mode, 1, gameState.difficulty);
   };
 
   if (!isPlaying) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky-100 to-white">
-        <Mascot message="Hi! 来大显身手吧！" />
-        <h1 className="text-7xl font-black text-blue-500 mb-2 tracking-tighter drop-shadow-xl art-text animate-float">
-          单词消消乐
-        </h1>
-        <p className="text-blue-300 font-bold text-2xl mb-12">Fun & Easy Learning</p>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#f0f9ff]">
+        <Mascot message="你好呀！今天想学什么？" />
+        <h1 className="text-7xl font-black text-blue-500 mb-2 art-text animate-float">单词消消乐</h1>
+        <p className="text-blue-300 font-bold text-2xl mb-10">趣味学习，轻松过关</p>
         
+        {/* 难度选择器 */}
+        <div className="flex bg-white/50 p-2 rounded-[2rem] mb-12 shadow-inner border border-white">
+          {(['EASY', 'MEDIUM', 'HARD'] as const).map((diff) => (
+            <button
+              key={diff}
+              onClick={() => setGameState(prev => ({ ...prev, difficulty: Difficulty[diff] }))}
+              className={`px-8 py-3 rounded-[1.5rem] font-black text-lg transition-all ${
+                gameState.difficulty === Difficulty[diff] 
+                ? 'bg-blue-500 text-white shadow-lg scale-105' 
+                : 'text-blue-400 hover:bg-white/80'
+              }`}
+            >
+              {diff === 'EASY' ? '萌新' : diff === 'MEDIUM' ? '高手' : '学霸'}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
           {Object.entries(THEMES).map(([mode, theme]) => (
             <button
               key={mode}
               onClick={() => startNewGame(mode as GameMode)}
-              className="bg-white rounded-[3.5rem] p-10 bubble-btn border-4 border-white group relative overflow-hidden"
+              className="bg-white rounded-[3.5rem] p-8 bubble-btn border-4 border-white group relative"
             >
-              <div className="absolute top-0 right-0 w-20 h-20 bg-yellow-100/50 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-              <div className="text-8xl mb-6 group-hover:scale-110 transition-transform">{theme.icon}</div>
-              <h2 className={`text-4xl font-black mb-3 ${theme.accent}`}>{theme.name}</h2>
-              <p className="text-gray-400 font-bold text-lg">{theme.description}</p>
+              <div className="text-7xl mb-6 group-hover:scale-110 transition-transform">{theme.icon}</div>
+              <h2 className={`text-3xl font-black mb-2 ${theme.accent}`}>{theme.name}</h2>
+              <p className="text-gray-400 font-bold">{theme.description}</p>
             </button>
           ))}
         </div>
@@ -210,49 +183,43 @@ const App: React.FC = () => {
     );
   }
 
-  const currentTheme = THEMES[gameState.mode];
-
   return (
     <div className={`min-h-screen flex flex-col items-center pb-32`}>
-      {/* 顶部仪表盘 */}
-      <header className="w-full max-w-5xl px-4 py-8 flex justify-between items-center gap-4">
-        <div className="flex gap-3">
-            <div className="bg-white px-6 py-3 rounded-3xl shadow-lg border-2 border-sky-100 flex flex-col items-center min-w-[100px]">
-                <span className="text-gray-400 font-bold text-xs">第几关</span>
-                <span className="text-blue-500 font-black text-2xl">{gameState.level}/{gameState.totalLevels}</span>
+      <header className="w-full max-w-5xl px-4 py-8 flex justify-between items-center">
+        <div className="flex gap-4">
+            <div className="bg-white px-6 py-2 rounded-3xl shadow-md border-2 border-sky-100 flex flex-col items-center">
+                <span className="text-gray-400 font-black text-[10px]">等级</span>
+                <span className="text-blue-500 font-black text-xl">{gameState.level}</span>
             </div>
-            <div className="bg-white px-6 py-3 rounded-3xl shadow-lg border-2 border-orange-100 flex flex-col items-center min-w-[100px]">
-                <span className="text-gray-400 font-bold text-xs">魔法分</span>
-                <span className="text-orange-500 font-black text-2xl">{gameState.score}</span>
+            <div className="bg-white px-6 py-2 rounded-3xl shadow-md border-2 border-orange-100 flex flex-col items-center">
+                <span className="text-gray-400 font-black text-[10px]">得分</span>
+                <span className="text-orange-500 font-black text-xl">{gameState.score}</span>
             </div>
         </div>
         
-        <div className="bg-white/80 px-8 py-3 rounded-full shadow-inner border border-white flex items-center gap-4 flex-1 max-w-sm">
-            <div className="h-4 bg-gray-100 rounded-full flex-1 overflow-hidden">
+        <div className="bg-white/80 px-6 py-3 rounded-full shadow-inner border border-white flex items-center gap-4 flex-1 max-w-xs">
+            <div className="h-3 bg-gray-100 rounded-full flex-1 overflow-hidden">
                 <div 
-                    className="h-full bg-emerald-400 transition-all duration-500" 
+                    className="h-full bg-emerald-400 transition-all duration-300" 
                     style={{ width: `${(gameState.matchedCount / gameState.totalPairs) * 100}%` }}
                 ></div>
             </div>
-            <span className="text-emerald-500 font-black text-lg">{gameState.matchedCount}/{gameState.totalPairs}</span>
+            <span className="text-emerald-500 font-black">{gameState.matchedCount}/{gameState.totalPairs}</span>
         </div>
       </header>
 
       <main className="flex-1 w-full max-w-7xl px-4">
         {gameState.isBusy && gameState.cards.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
-            <div className="text-9xl animate-bounce">🎨</div>
-            <p className="mt-6 text-blue-400 font-black text-3xl art-text">正在变魔法...</p>
+            <div className="text-8xl animate-spin">🌟</div>
           </div>
         ) : (
-          <div className="animate-pop">
-            <div className="mb-4">
-               <Mascot message={gameState.encouragement} />
-            </div>
+          <div>
+            <div className="mb-4"><Mascot message={gameState.encouragement} /></div>
             <GameBoard 
               cards={gameState.cards} 
               onCardClick={handleCardClick}
-              accentColor={currentTheme.accent}
+              accentColor={THEMES[gameState.mode].accent}
               selectedIndices={gameState.selectedIndices}
               hintIndices={hintIndices}
             />
@@ -260,41 +227,36 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* 底部功能栏 */}
-      <footer className="fixed bottom-6 left-0 right-0 flex justify-center gap-6 px-4 z-40">
+      <footer className="fixed bottom-6 left-0 right-0 flex justify-center gap-4 px-4 z-40">
+        <button onClick={() => setIsPlaying(false)} className="bg-[#FF7A8A] text-white px-8 py-4 rounded-[2rem] font-black bubble-btn">🏠 首页</button>
         <button 
-          onClick={() => setIsPlaying(false)}
-          className="bg-[#FF7A8A] text-white px-10 py-5 rounded-[2.5rem] font-black bubble-btn text-xl"
-        >
-          🏠 首页
-        </button>
-        <button 
-          onClick={handleHint}
-          disabled={gameState.score < 5}
-          className={`${gameState.score < 5 ? 'bg-gray-300' : 'bg-[#FFB84D]'} text-white px-12 py-5 rounded-[2.5rem] font-black bubble-btn text-xl flex items-center gap-2`}
-        >
-          💡 提示 (5分)
-        </button>
-        <button 
-          onClick={() => initLevel(gameState.mode, gameState.level)}
-          className="bg-[#5C7CFF] text-white px-10 py-5 rounded-[2.5rem] font-black bubble-btn text-xl"
-        >
-          🔄 刷新
-        </button>
+            onClick={() => {
+                const unMatched = gameState.cards.filter(c => !c.isMatched);
+                if (unMatched.length > 0 && gameState.score >= 5) {
+                    const mid = unMatched[0].matchId;
+                    setHintIndices(gameState.cards.map((c, i) => c.matchId === mid ? i : -1).filter(i => i !== -1));
+                    setGameState(prev => ({ ...prev, score: prev.score - 5 }));
+                    setTimeout(() => setHintIndices([]), 2000);
+                }
+            }} 
+            className="bg-[#FFB84D] text-white px-8 py-4 rounded-[2rem] font-black bubble-btn"
+        >💡 提示</button>
+        <button onClick={() => initLevel(gameState.mode, gameState.level, gameState.difficulty)} className="bg-[#5C7CFF] text-white px-8 py-4 rounded-[2rem] font-black bubble-btn">🔄 刷新</button>
       </footer>
 
       {gameState.isGameOver && (
-        <div className="fixed inset-0 bg-white/60 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-pop">
-          <div className="bg-white rounded-[4rem] p-12 text-center shadow-2xl max-w-md w-full border-[16px] border-emerald-100 relative">
-            <div className="absolute -top-20 left-1/2 -translate-x-1/2 text-9xl">🌟</div>
-            <h2 className="text-5xl font-black text-emerald-500 mb-4 art-text">超级棒!</h2>
-            <p className="text-2xl text-gray-500 font-bold mb-10">获得了大量经验值！</p>
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-[4rem] p-10 text-center shadow-2xl max-w-sm w-full border-[12px] border-yellow-100">
+            <div className="text-8xl mb-6">👑</div>
+            <h2 className="text-4xl font-black text-gray-800 mb-8">太棒了！</h2>
             <button 
-              onClick={nextLevel}
-              className="w-full bg-blue-500 text-white font-black text-3xl py-6 rounded-[3rem] bubble-btn"
-            >
-              {gameState.level < gameState.totalLevels ? '挑战下一关' : '通关撒花!'}
-            </button>
+              onClick={() => {
+                const nextLvl = gameState.level + 1;
+                setGameState(prev => ({ ...prev, level: nextLvl }));
+                initLevel(gameState.mode, nextLvl, gameState.difficulty);
+              }}
+              className="w-full bg-blue-500 text-white font-black text-2xl py-5 rounded-[2.5rem] bubble-btn"
+            >下一关</button>
           </div>
         </div>
       )}
