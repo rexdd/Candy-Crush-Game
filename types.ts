@@ -11,6 +11,19 @@ export enum Difficulty {
   HARD = 'HARD'
 }
 
+export enum AIProvider {
+  GEMINI = 'GEMINI',
+  OPENAI = 'OPENAI'
+}
+
+export interface AIConfig {
+  provider: AIProvider;
+  openaiKey?: string;
+  openaiUrl?: string;
+  openaiModel?: string;
+  isOfflineMode?: boolean;
+}
+
 export interface Card {
   id: string;
   content: string;
