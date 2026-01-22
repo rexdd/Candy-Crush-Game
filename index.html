@@ -4,48 +4,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word Match Fun</title>
+    <title>单词消消乐 - 快乐学英语</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Fredoka:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Fredoka:wght@600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bubble-shadow: 0 8px 0 rgba(0,0,0,0.1);
+        }
         body {
             font-family: 'Fredoka', 'ZCOOL KuaiLe', cursive;
-            background: #F7F8FA;
+            background: linear-gradient(135deg, #e0f2fe 0%, #fefce8 100%);
+            min-h-screen;
             user-select: none;
             overflow-x: hidden;
+            margin: 0;
         }
-        .animate-pop {
-            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .bubble-btn {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1);
         }
-        @keyframes pop {
-            0% { transform: scale(0.8); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+        .bubble-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .art-text {
+            text-shadow: 3px 3px 0px rgba(255,255,255,1), 6px 6px 0px rgba(0,0,0,0.05);
         }
         .matched-hidden {
-            animation: matched-out 0.4s ease-in forwards;
+            animation: matched-out 0.5s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
             pointer-events: none;
         }
         @keyframes matched-out {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); filter: brightness(1.2); }
+            0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+            50% { transform: scale(1.2) rotate(10deg); filter: brightness(1.5); }
             100% { transform: scale(0); opacity: 0; }
         }
-        .art-text {
-            text-shadow: 2px 2px 0px rgba(0,0,0,0.05);
+        .hint-pulse {
+            animation: hint-pulse 1s infinite alternate;
+        }
+        @keyframes hint-pulse {
+            from { ring-width: 0px; transform: scale(1); }
+            to { ring-width: 8px; transform: scale(1.05); }
         }
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
-  }
-}
-</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+        "react/": "https://esm.sh/react@^19.2.3/",
+        "react": "https://esm.sh/react@^19.2.3",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+      }
+    }
+    </script>
 </head>
-<body class="bg-[#F7F8FA] min-h-screen">
+<body>
     <div id="root"></div>
+    <!-- 显式引入 index.tsx 确保应用运行 -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
