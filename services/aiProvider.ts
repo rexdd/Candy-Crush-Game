@@ -4,9 +4,14 @@ import { generateLevelContent as generateWithGemini, getEncouragement as getEnco
 import { generateWithOpenAI, getEncouragementWithOpenAI } from "./openaiService";
 import { getOfflineLevel, OFFLINE_ENCOURAGEMENTS } from "../data/offlineData";
 
+// 检测环境变量
+const HAS_GEMINI_KEY = !!process.env.API_KEY;
+const HAS_OPENAI_KEY = !!(process.env as any).OPENAI_API_KEY;
+
 const DEFAULT_CONFIG: AIConfig = {
-  provider: AIProvider.GEMINI,
-  isOfflineMode: false
+  // 如果环境变量有 Gemini 则默认 Gemini，否则如果有 OpenAI 则默认 OpenAI，全无则离线
+  provider: HAS_GEMINI_KEY ? AIProvider.GEMINI : (HAS_OPENAI_KEY ? AIProvider.OPENAI : AIProvider.GEMINI),
+  isOfflineMode: !(HAS_GEMINI_KEY || HAS_OPENAI_KEY)
 };
 
 export const getStoredConfig = (): AIConfig => {
@@ -29,19 +34,21 @@ export const saveConfig = (config: AIConfig) => {
 export const generateContent = async (mode: GameMode, level: number, difficulty: Difficulty): Promise<LevelData> => {
   const config = getStoredConfig();
 
-  // 如果开启了离线模式，直接返回本地数据
   if (config.isOfflineMode) {
     return { pairs: getOfflineLevel(mode, difficulty) };
   }
 
   try {
-    if (config.provider === AIProvider.OPENAI && config.openaiKey) {
+    if (config.provider === AIProvider.OPENAI) {
       return await generateWithOpenAI(config, mode, level, difficulty);
+    }
+    // Gemini 情况
+    if (!process.env.API_KEY && !config.isOfflineMode) {
+       throw new Error("No Gemini Key configured");
     }
     return await generateWithGemini(mode, level, difficulty);
   } catch (error) {
-    console.warn("AI 魔法失效，正在启用本地离线咒语...", error);
-    // 自动回退到离线模式，确保游戏不中断
+    console.warn("AI 魔法暂时休眠中...", error);
     return { pairs: getOfflineLevel(mode, difficulty) };
   }
 };
@@ -55,7 +62,7 @@ export const getEncouragement = async (isMatch: boolean): Promise<string> => {
   }
 
   try {
-    if (config.provider === AIProvider.OPENAI && config.openaiKey) {
+    if (config.provider === AIProvider.OPENAI) {
       return await getEncouragementWithOpenAI(config, isMatch);
     }
     return await getEncouragementWithGemini(isMatch);
