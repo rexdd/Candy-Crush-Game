@@ -48,7 +48,7 @@ export const generateContent = async (mode: GameMode, level: number, difficulty:
     }
     return await generateWithGemini(mode, level, difficulty);
   } catch (error) {
-    console.warn("AI 魔法暂时休眠中...", error);
+    console.warn("AI 魔法暂时休眠中，已自动开启本地魔法库", error);
     return { pairs: getOfflineLevel(mode, difficulty) };
   }
 };
